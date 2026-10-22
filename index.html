@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Creador de Sigilos</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', sans-serif;
+    background: #1a1a1a;
+    color: #e8e8e8;
+    min-height: 100vh;
+    padding: 20px;
+  }
+  h1 { text-align: center; margin-bottom: 10px; color: #fff; }
+  .subtitle { text-align: center; opacity: 0.7; margin-bottom: 25px; font-size: 0.9em; }
+  .container {
+    max-width: 700px;
+    margin: 0 auto;
+    background: #2a2a2a;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  }
+  label { display: block; margin-bottom: 8px; font-weight: bold; }
+  input[type="text"] {
+    width: 100%;
+    padding: 12px;
+    background: #1a1a1a;
+    border: 2px solid #444;
+    color: #fff;
+    border-radius: 8px;
+    font-size: 16px;
+    margin-bottom: 15px;
+  }
+  input[type="text"]:focus { outline: none; border-color: #8b5cf6; }
+  button {
+    width: 100%;
+    padding: 12px;
+    background: #8b5cf6;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+    font-weight: bold;
+    margin-bottom: 10px;
+  }
+  button:hover { background: #7c3aed; }
+  button.secondary { background: #4b5563; }
+  button.secondary:hover { background: #374151; }
+  .steps {
+    background: #1a1a1a;
+    padding: 15px;
+    border-radius: 8px;
+    margin: 15px 0;
+    font-family: monospace;
+    font-size: 15px;
+    line-height: 1.8;
+  }
+  .step-label { color: #8b5cf6; font-weight: bold; }
+  .canvas-wrap {
+    display: flex;
+    justify-content: center;
+    margin: 20px 0;
+  }
+  canvas {
+    background: #f5f5f0;
+    border-radius: 8px;
+    max-width: 100%;
+  }
+  .hidden { display: none; }
+  .tip {
+    background: #3b2f2f;
+    border-left: 4px solid #8b5cf6;
+    padding: 12px;
+    margin: 15px 0;
+    border-radius: 4px;
+    font-size: 0.9em;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🌙 Creador de Sigilos</h1>
+  <p class="subtitle">Escribe tu afirmación y obtén tu sigilo</p>
+
+  <label for="frase">Tu afirmación (en presente):</label>
+  <input type="text" id="frase" placeholder="Ej: Soy inteligente" value="Soy inteligente">
+
+  <button onclick="generar()">✨ Crear sigilo</button>
+
+  <div id="resultado" class="hidden">
+    <div class="steps" id="pasos"></div>
+
+    <div class="canvas-wrap">
+      <canvas id="sigilo" width="400" height="400"></canvas>
+    </div>
+
+    <button class="secondary" onclick="descargar()">💾 Descargar imagen</button>
+    <button class="secondary" onclick="aleatorio()">🎨 Decoración aleatoria</button>
+  </div>
+
+  <div class="tip">
+    <strong>💡 Cómo usar tu sigilo:</strong> dibújalo en tu piel, ponlo bajo la almohada, guárdalo en tu celular o quémalo. Hazlo tuyo.
+  </div>
+</div>
+
+<script>
+const distribucion = {
+  'a':1,'b':2,'c':3,'d':4,'e':5,'f':6,'g':7,'h':8,'i':9,
+  'j':1,'k':2,'l':3,'m':4,'n':5,'o':6,'p':7,'q':8,'r':9,
+  's':1,'t':2,'u':3,'v':4,'w':5,'x':6,'y':7,'z':8
+};
+
+// Distribución circular correcta: 9 puntos equidistantes (40° cada uno), empezando desde arriba
+const angulos = {};
+for (let i = 1; i <= 9; i++) {
+  angulos[i] = (-90 + (i - 1) * 40) * Math.PI / 180;
+}
+
+let letrasFinales = [];
+let decoracion = 0;
+
+function generar() {
+  const frase = document.getElementById('frase').value.toLowerCase();
+  const paso1 = frase;
+  
+  // Paso 2: Eliminar vocales y 'y', dejar consonantes
+  const consonantes = frase.replace(/[aeiouyáéíóú\s\d\W]/g, '');
+  
+  // Paso 3: Eliminar consonantes repetidas
+  const unicas = [...new Set(consonantes.split(''))].join('');
+  letrasFinales = unicas.split('');
+  
+  // Paso 4: Convertir a números
+  const numerosCompletos = letrasFinales.map(l => distribucion[l]).filter(n => n !== undefined);
+  
+  // Paso 5: ELIMINAR NÚMEROS DUPLICADOS (Método Austin Osman Spare)
+  const numerosSinRepetir = [...new Set(numerosCompletos)];
+  
+  document.getElementById('pasos').innerHTML = `
+    <span class="step-label">1)</span> ${paso1}<br>
+    <span class="step-label">2)</span> Consonantes: ${consonantes}<br>
+    <span class="step-label">3)</span> Sin repetir letras: <strong>${unicas}</strong><br>
+    <span class="step-label">4)</span> Conversión numérica: ${numerosCompletos.join(' - ')}<br>
+    <span class="step-label">5)</span> <span style="color:#8b5cf6">Números duplicados eliminados:</span> <strong>${numerosSinRepetir.join(' - ')}</strong><br>
+    <span class="step-label">6)</span> Sigilo dibujado ↓
+  `;
+
+  dibujarSigilo(numerosSinRepetir);
+  document.getElementById('resultado').classList.remove('hidden');
+}
+
+function dibujarSigilo(numeros) {
+  const canvas = document.getElementById('sigilo');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const cx = W/2, cy = H/2;
+
+  const radioPuntos = 120;
+  const radioNumeros = 155;
+
+  ctx.fillStyle = '#f5f5f0';
+  ctx.fillRect(0,0,W,H);
+
+  // Círculo base
+  ctx.strokeStyle = '#ddd';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(cx, cy, radioPuntos, 0, Math.PI*2);
+  ctx.stroke();
+
+  const getPos = (num, radio) => {
+    const a = angulos[num];
+    return {
+      x: cx + Math.cos(a) * radio,
+      y: cy + Math.sin(a) * radio
+    };
+  };
+
+  // LÍNEAS DEL SIGILO
+  if (numeros.length > 0) {
+    ctx.strokeStyle = '#1a1a1a';
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    numeros.forEach((n, idx) => {
+      const p = getPos(n, radioPuntos);
+      if (idx === 0) ctx.moveTo(p.x, p.y);
+      else ctx.lineTo(p.x, p.y);
+    });
+    ctx.stroke();
+
+    // PUNTOS
+    ctx.fillStyle = '#1a1a1a';
+    numeros.forEach(n => {
+      const p = getPos(n, radioPuntos);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 5, 0, Math.PI*2);
+      ctx.fill();
+    });
+
+    // Decoración
+    if (decoracion > 0) {
+      ctx.strokeStyle = '#1a1a1a';
+      ctx.lineWidth = 1.5;
+      const p1 = getPos(numeros[0], radioPuntos);
+      const pn = getPos(numeros[numeros.length-1], radioPuntos);
+
+      for (let i = 0; i < 3; i++) {
+        const ang = Math.random() * Math.PI * 2;
+        const len = 15 + Math.random() * 25;
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p1.x + Math.cos(ang)*len, p1.y + Math.sin(ang)*len);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(pn.x, pn.y);
+        ctx.lineTo(pn.x + Math.cos(ang+1)*len, pn.y + Math.sin(ang+1)*len);
+        ctx.stroke();
+      }
+    }
+  }
+
+  // NÚMEROS (fuera del círculo, bien visibles)
+  ctx.font = 'bold 16px sans-serif';
+  ctx.fillStyle = '#333';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  for (let i = 1; i <= 9; i++) {
+    const p = getPos(i, radioNumeros);
+    ctx.fillText(i, p.x, p.y);
+  }
+}
+
+function aleatorio() {
+  decoracion++;
+  const numeros = letrasFinales.map(l => distribucion[l]).filter(n => n !== undefined);
+  const numerosSinRepetir = [...new Set(numeros)];
+  dibujarSigilo(numerosSinRepetir);
+}
+
+function descargar() {
+  const canvas = document.getElementById('sigilo');
+  const link = document.createElement('a');
+  link.download = 'mi-sigilo.png';
+  link.href = canvas.toDataURL();
+  link.click();
+}
+</script>
+</body>
+</html>
